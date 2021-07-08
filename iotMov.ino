@@ -1,13 +1,17 @@
+// Programmed by Miguel Raul Gonzalez
+// July 5th 2021
+//  EnergySaver Program for Arduino uno
 
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>   // Graphic Library for Screen
+#include <Adafruit_SSD1306.h>  // Monocromatic Screen 
 
 #define ANCHO                 128
 #define ALTO                  64
 #define OLED_RESET            4
-#define SCREEN_ADDRESS        0x3C
+#define SCREEN_ADDRESS        0x3C  // Screen Address 
 #define DISPARO               180  // 3 minutos sin detectar movimiento abre el relay de IOT
+#define CONV_TEMP_CELCIUS     0.48828125  //Constante para convertir la lectura del sensor interno de temperatura a grados celcius
 
 //  Definición de los puertos digitales
 #define PIR_SENSOR            2   // pin conectado al sensor de movimiento
@@ -20,19 +24,19 @@
 
 
 
-Adafruit_SSD1306 oled (ANCHO,ALTO,&Wire, OLED_RESET);
+Adafruit_SSD1306 oled (ANCHO,ALTO,&Wire, OLED_RESET); // Start Screen
 
 //  Definición del sensor de temperatura y humedad
 
 #include "DHT.h"
-#define DHTTYPE DHT11   // DHT 11
+#define DHTTYPE DHT11   // DHT 11   type of sensor
 #define DHTPIN 7 // pin que va conectado al sensor de temperatura y humedad
 DHT dht(DHTPIN, DHTTYPE);
 
 
 
-float tempA0;        //0  
-int counter = 0;             // condador de segundos
+float tempA0;        // Almacena la temperatura sacada del puerto analógico A0  
+int counter = 0;             // contador de segundos
 volatile int reading = 0;    // variable de lectura del detector de movimiento
 volatile boolean bypass = false;
 
@@ -53,7 +57,12 @@ void setup() {
   // ----- en el detector  que es siempre porque manda 0 si no recibe nada
   attachInterrupt(0, mov_ISR, CHANGE);
 
+
+  // ----- Declara la rutina de interrupción que se dispara al presionar el botón de bypass
+  // ----- para evitar que se vaya a dormir
  attachInterrupt(1, bypass_ISR, CHANGE);
+
+ 
 
   Serial.begin(9600);
   Serial.println("DHTxx test!");
@@ -67,9 +76,6 @@ void setup() {
     for(;;); // Don't proceed, loop forever
   }
   
-
-
-
   oled.display();
   delay(2000);
   oled.clearDisplay();
@@ -77,8 +83,8 @@ void setup() {
 }
 void loop() {
 
-tempA0 = analogRead(INTERNAL_TEMP_SENSOR);
-tempA0 =  tempA0 * 0.48828125;
+tempA0 = analogRead(INTERNAL_TEMP_SENSOR); // Lee la temperatura del sensor INTERNO
+tempA0 =  tempA0 * CONV_TEMP_CELCIUS;   // Convierte la señal en grados celcius
 
 
 if (bypass==true) {
@@ -89,7 +95,7 @@ if (bypass==true) {
         oled.print("BYPASSS");
         oled.display();
         digitalWrite(IOT_RELAY_PIN, HIGH);
-        digitalWrite(LED_BYPASS_PIN, HIGH);
+        // digitalWrite(LED_BYPASS_PIN, HIGH);  //Nunca funcionó
         delay(2000);
         
        
@@ -100,13 +106,13 @@ if (bypass==true) {
        
   } else {
 
-    digitalWrite(LED_BYPASS_PIN, LOW);
+    // digitalWrite(LED_BYPASS_PIN, LOW);
     delay(1000);  //  Delay de un segundo en cada ciclo
     counter = counter + 1;   // Counter de intervalo en segundos
 
   
      if (counter > 1000){
-          counter = DISPARO + 1;
+          counter = DISPARO + 1;  // Vuelve a cero para que no vaya  a hacer un overflow
       }
 
     //Humidity
@@ -122,7 +128,7 @@ if (bypass==true) {
         return;
      }
     
-      if (counter < DISPARO) {
+      if (counter < DISPARO) {    
         oled.clearDisplay();
         oled.setTextColor(WHITE);
         oled.setCursor(0,0);
